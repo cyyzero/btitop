@@ -1,3 +1,6 @@
 build*/
 bpf/vmlinux.h
 *.o
+
+__pycache__/
+*.pyc

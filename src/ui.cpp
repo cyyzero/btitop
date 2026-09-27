@@ -366,7 +366,7 @@ void run_ui(UiOptions opt, std::function<std::optional<Snapshot>()> latest,
         use_default_colors();
     }
     Snapshot s;
-    bool have = false, help = false;
+    bool have = false, help = false, dirty = true;
     size_t cursor = 0;
     std::string status;
     std::unordered_map<Identity, std::string, IdentityHash> commands;
@@ -375,11 +375,12 @@ void run_ui(UiOptions opt, std::function<std::optional<Snapshot>()> latest,
             if (auto n = latest()) {
                 s = std::move(*n);
                 have = true;
+                dirty = true;
                 status = s.diagnostic;
                 if (commands.size() > 512)
                     commands.clear();
             }
-            if (have) {
+            if (dirty && have) {
                 auto ids = select(s.tasks, opt.query);
                 if (cursor >= ids.size())
                     cursor = ids.empty() ? 0 : ids.size() - 1;
@@ -409,10 +410,11 @@ void run_ui(UiOptions opt, std::function<std::optional<Snapshot>()> latest,
                     put(4, 0, "k send signal | r renice | Enter details | h close help", COLS);
                     refresh();
                 }
-            } else {
+            } else if (dirty) {
                 put(0, 0, "btitop: collecting initial snapshot...", COLS);
                 refresh();
             }
+            dirty = false;
             int c = getch();
             if (c == ERR) {
                 napms(75);
@@ -420,6 +422,7 @@ void run_ui(UiOptions opt, std::function<std::optional<Snapshot>()> latest,
             }
             if (c == 'q')
                 break;
+            dirty = true;
             if (c == 'h') {
                 help = !help;
                 continue;

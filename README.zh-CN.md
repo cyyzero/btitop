@@ -33,4 +33,4 @@ sudo ./build/btitop --backend=bpf --threads
 
 首轮 `%CPU` 显示 `N/A`。默认按 top 的 Irix 模式显示，多线程进程可超过 100%；`I` 切换为按 CPU 数归一化。BPF 的累计 CPU 值和 RSS/SHR 与 procfs 可能有小幅差异，原因与具体字段见[字段矩阵](docs/fields.md)。BPF 周期采集不扫描每任务 procfs；开启命令行显示后，只按需读取可见任务。采样间隔内出现又退出的短命任务可能被遗漏。
 
-[架构说明](docs/architecture.md)和[性能基准](docs/benchmarks.md)包含接口、测试方法与本机结果。当前在定制 Linux 7.0 内核上验证；标准 6.6、6.12 内核仍需各自验证。
+[架构说明](docs/architecture.md)和[性能基准](docs/benchmarks.md)包含接口、测试方法与本机结果；[场景对比](docs/comparison.md)记录了与 top、htop 的实测。当前在定制 Linux 7.0 内核上验证；标准 6.6、6.12 内核仍需各自验证。

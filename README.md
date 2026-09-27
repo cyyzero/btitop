@@ -40,6 +40,6 @@ The BPF sampling path does not scan per-task procfs files. The TUI reads `/proc/
 
 ## Performance and architecture
 
-[Architecture](docs/architecture.md) describes the data flow. [Benchmarks](docs/benchmarks.md) records reproducible measurements and perf findings. The included `tools/benchmark.py` can compare both collection backends under a chosen task count; it does not modify system settings. Run it with permissions sufficient for BPF loading.
+[Architecture](docs/architecture.md) describes the data flow. [Benchmarks](docs/benchmarks.md) records reproducible measurements and perf findings. [Scenario comparison](docs/comparison.md) compares btitop with top and htop. The included `tools/benchmark.py` can compare both collection backends under a chosen task count; it does not modify system settings. Run it with permissions sufficient for BPF loading.
 
 Current builds target x86-64 and arm64 Linux. The BPF program is built against the current kernel's BTF and uses CO-RE relocations. Linux 6.6 and 6.12 compatibility remains to be verified on those kernels; a successful build on this host does not establish that compatibility.
