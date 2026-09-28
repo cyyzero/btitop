@@ -39,6 +39,7 @@ class BpfSource final : public TaskSource {
     std::vector<char> bytes_;
     std::unordered_map<int, uint64_t> dead_;
     std::unordered_map<int, size_t> leaders_;
+    size_t scanned_{};
 
   public:
     BpfSource(bpf_object *o, bpf_link *l) : obj_(o), link_(l) {
@@ -51,6 +52,9 @@ class BpfSource final : public TaskSource {
     }
     std::string name() const override {
         return "bpf";
+    }
+    size_t scanned_tasks() const override {
+        return scanned_;
     }
     bool collect(std::vector<Task> &out, bool threads, std::string &error) override {
         int fd = bpf_iter_create(bpf_link__fd(link_));
@@ -82,6 +86,7 @@ class BpfSource final : public TaskSource {
             error = "truncated BPF record";
             return false;
         }
+        scanned_ = bytes_.size() / sizeof(btitop_wire_task);
         out.clear();
         out.reserve(bytes_.size() / sizeof(btitop_wire_task));
         dead_.clear();

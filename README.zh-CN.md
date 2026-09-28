@@ -1,6 +1,6 @@
 # btitop
 
-btitop 是 Linux 终端任务监控工具，以 **BPF task iterator** 获取任务快照，并提供 procfs 备用后端。采集、指标计算、查询和界面分层实现；默认每秒采样，重点降低监控开销。
+btitop 是 Linux 终端任务监控工具，以 **BPF task iterator** 获取任务快照，并提供 procfs 备用后端和 htop 风格扫描后端。采集、指标计算、查询和界面分层实现；默认每秒采样，重点降低监控开销。
 
 ![btitop 终端界面](assets/screenshot.png)
 
@@ -23,11 +23,13 @@ ctest --test-dir build --output-on-failure
 
 ```sh
 ./build/btitop --backend=procfs
+./build/btitop --backend=htop
+./build/btitop --backend=htop --threads
 sudo ./build/btitop --backend=bpf --threads
 ./build/btitop --json --iterations=2 --interval=1
 ```
 
-参数包括 `--backend=auto|bpf|procfs`、`--interval`、`--pid`、`--user`、`--threads`、`--sort`、`--batch`、`--json`、`--iterations`、`--no-color`。
+参数包括 `--backend=auto|bpf|procfs|htop`、`--interval`、`--pid`、`--user`、`--threads`、`--sort`、`--batch`、`--json`、`--iterations`、`--no-color`。`htop` 模式即使只显示进程行，也会遍历 `/proc/PID/task` 下的全部线程；进程视图采用进程累计 CPU 和内存，线程视图采用各线程 CPU 及共享的进程内存。这模拟 htop 的遍历方式，并非复制其全部字段语义或界面。标题与 JSON 中的 `scanned_tasks` 便于区分扫描量和展示行数。`auto` 仍在 BPF 和轻量 procfs 后端之间选择。
 
 常用按键：`q` 退出，方向键/`j`/`K` 移动，`h` 帮助，`t` 线程模式，`c` 完整命令行，`/` 搜索，`u` 用户筛选，`p` PID 筛选，`s` 排序，`R` 反向，`z` 树视图，`f` 选择列，`I` CPU 归一化，`1` 逐核 CPU，`+`/`-` 调整刷新间隔，回车查看详情，`k` 发送信号，`r` 调整 nice。进程操作需要再次输入 `YES`。展示设置保存于 `$XDG_CONFIG_HOME/btitop/config`，未设置时使用 `~/.config/btitop/config`。
 

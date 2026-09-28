@@ -72,9 +72,14 @@ void statm(const std::string &path, Task &t) {
     }
 }
 class ProcSource final : public TaskSource {
+    size_t scanned_{};
+
   public:
     std::string name() const override {
         return "procfs";
+    }
+    size_t scanned_tasks() const override {
+        return scanned_;
     }
     bool collect(std::vector<Task> &out, bool threads, std::string &error) override {
         DIR *proc = opendir("/proc");
@@ -121,12 +126,91 @@ class ProcSource final : public TaskSource {
             closedir(dir);
         }
         closedir(proc);
+        scanned_ = out.size();
+        return true;
+    }
+};
+class HtopSource final : public TaskSource {
+    size_t scanned_{};
+
+  public:
+    std::string name() const override {
+        return "htop";
+    }
+    size_t scanned_tasks() const override {
+        return scanned_;
+    }
+    bool collect(std::vector<Task> &out, bool threads, std::string &error) override {
+        DIR *proc = opendir("/proc");
+        if (!proc) {
+            error = "cannot open /proc";
+            return false;
+        }
+        scanned_ = 0;
+        out.clear();
+        out.reserve(threads ? 4096 : 512);
+        while (auto *e = readdir(proc)) {
+            if (!decimal(e->d_name))
+                continue;
+            int pid = atoi(e->d_name);
+            std::string base = "/proc/" + std::to_string(pid);
+            struct stat st {};
+            if (stat(base.c_str(), &st))
+                continue;
+            Task leader;
+            leader.id.pid = leader.id.tid = pid;
+            leader.uid = st.st_uid;
+            if (!read_stat(base + "/stat", leader))
+                continue;
+            statm(base + "/statm", leader);
+            ++scanned_;
+            std::string taskdir = base + "/task";
+            DIR *dir = opendir(taskdir.c_str());
+            if (dir) {
+                if (threads) {
+                    Task leader_thread = leader;
+                    if (read_stat(taskdir + "/" + std::to_string(pid) + "/stat", leader_thread)) {
+                        leader_thread.virtual_bytes = leader.virtual_bytes;
+                        leader_thread.rss_bytes = leader.rss_bytes;
+                        leader_thread.shared_bytes = leader.shared_bytes;
+                        leader = std::move(leader_thread);
+                    }
+                }
+                while (auto *te = readdir(dir)) {
+                    if (!decimal(te->d_name))
+                        continue;
+                    int tid = atoi(te->d_name);
+                    if (tid == pid)
+                        continue;
+                    Task task;
+                    task.id.pid = pid;
+                    task.id.tid = tid;
+                    task.uid = st.st_uid;
+                    if (!read_stat(taskdir + "/" + te->d_name + "/stat", task))
+                        continue;
+                    // A thread shares its leader's address space, as in htop's statm scan.
+                    task.virtual_bytes = leader.virtual_bytes;
+                    task.rss_bytes = leader.rss_bytes;
+                    task.shared_bytes = leader.shared_bytes;
+                    task.memory_valid = leader.memory_valid;
+                    ++scanned_;
+                    if (threads)
+                        out.push_back(std::move(task));
+                }
+                closedir(dir);
+            }
+            out.push_back(std::move(leader));
+        }
+        closedir(proc);
         return true;
     }
 };
 } // namespace
 std::unique_ptr<TaskSource> make_proc_source() {
     return std::make_unique<ProcSource>();
+}
+std::unique_ptr<TaskSource> make_htop_source() {
+    return std::make_unique<HtopSource>();
 }
 bool verify_identity(const Identity &id) {
     Task t;

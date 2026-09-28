@@ -7,6 +7,9 @@ Measured on 2026-09-28, Linux `7.0.0-taskstats+`, 16 logical CPUs, procps top `4
 - Default top calls `procps_pids_reap(..., PIDS_FETCH_TASKS_ONLY)` and reads all visible process leaders; `top -H` uses `PIDS_FETCH_THREADS_TOO`. It sorts the collected tasks and displays only rows that fit the terminal. Batch output confirmed similar row counts to btitop (441 vs 446 process lines, 1944 vs 1947 thread lines including headers and task churn).
 - htop's Linux process-table scan enumerates `/proc`, then recurses into each process's `task` directory. Hiding threads affects display, not this scan. Source checked at htop commit `bb3ee0a`, `linux/LinuxProcessTable.c`.
 - btitop's `iter/task` BPF program visits kernel tasks, including threads. Process view groups them before display; `--threads` displays separate tasks.
+- The explicit `btitop --backend=htop` mode now follows htop's traversal pattern: it reads every thread's procfs stat even when displaying process rows. This provides a like-for-like scan workload inside btitop's common metric and UI pipeline, but does not claim full htop field or UI equivalence.
+
+On this host, one 8-frame, 100ms JSON run with 30 extra sleeping processes returned 480 process rows per frame. The procfs backend scanned 480 tasks and used 0.141 CPU seconds (15.77ms median sampling time); the htop-style backend scanned 1,932 tasks and used 0.405 CPU seconds (48.27ms median). This is an illustrative same-binary comparison, not a stable speed ratio. BPF could not be loaded in that run because the environment denied BPF access.
 
 ## Batch mode: 12 frames at 100ms
 

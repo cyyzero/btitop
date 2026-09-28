@@ -3,12 +3,12 @@
 ```
 BPF iter/task -> binary records --+
                                 +--> TaskSource --> Snapshot --> Metrics --> Query --> TUI / text / JSON
-procfs -------------------------+                     ^
+procfs / htop-style scan -------+                     ^
 SystemSource (/proc global files) --------------------+
 TaskControl (pidfd / setpriority) -------------------------------> TUI
 ```
 
-`TaskSource` returns raw cumulative task counters and field-validity flags. The BPF program writes versioned, fixed-length binary records via `bpf_seq_write`; userspace validates every record and groups live threads in process mode. The procfs backend reads `stat` and `statm`, following top's source. `SystemSource` reads global CPU/memory/load files once per sample. `Metrics` uses start time with PID/TID as the task identity, computes deltas, and resets when the backend or thread mode changes. `Query` sorts indices rather than copying task records. The TUI and batch exporters consume the same selected rows.
+`TaskSource` returns raw cumulative task counters and field-validity flags. The BPF program writes versioned, fixed-length binary records via `bpf_seq_write`; userspace validates every record and groups live threads in process mode. The procfs backend reads `stat` and `statm`, following top's source. The explicit `htop` backend visits every `/proc/PID/task/TID/stat` even in process view, matching htop's traversal pattern; process CPU comes from the leader's `/proc/PID/stat`, so exited-thread time is retained. Thread rows share the leader's `statm` memory values. `SystemSource` reads global CPU/memory/load files once per sample. `Metrics` uses start time with PID/TID as the task identity, computes deltas, and resets when the backend or thread mode changes. `Query` sorts indices rather than copying task records. The TUI and batch exporters consume the same selected rows.
 
 One sampler thread collects and publishes only the newest snapshot to the UI thread. A slower UI cannot queue up old samples. `CLOCK_BOOTTIME` measures CPU sample intervals as in procps-ng top. A failed BPF load in auto mode selects procfs; a runtime BPF read failure switches source and discards the previous CPU baseline. Explicit BPF mode fails instead.
 

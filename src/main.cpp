@@ -97,6 +97,7 @@ class Sampler {
                     return;
                 }
             }
+            s.scanned_tasks = source_->scanned_tasks();
             s.end = Clock::now();
             timespec boot{};
             clock_gettime(CLOCK_BOOTTIME, &boot);
@@ -156,9 +157,10 @@ int main(int argc, char **argv) {
         for (int i = 1; i < argc; i++) {
             std::string a = argv[i];
             if (a == "--help" || a == "-h") {
-                std::cout << "btitop [--backend auto|bpf|procfs] [--interval seconds] [--pid PID] "
-                             "[--user USER] [--threads] [--sort cpu|mem|pid|time|name] "
-                             "[--batch|--json] [--iterations N] [--no-color]\n";
+                std::cout
+                    << "btitop [--backend auto|bpf|procfs|htop] [--interval seconds] [--pid PID] "
+                       "[--user USER] [--threads] [--sort cpu|mem|pid|time|name] "
+                       "[--batch|--json] [--iterations N] [--no-color]\n";
                 return 0;
             } else if (a.rfind("--backend", 0) == 0)
                 backend = value(i, argc, argv, a);
@@ -188,13 +190,15 @@ int main(int argc, char **argv) {
         }
         if (ui.interval < 0.1 || ui.interval > 3600)
             throw std::runtime_error("interval must be 0.1..3600 seconds");
-        if (backend != "auto" && backend != "bpf" && backend != "procfs")
+        if (backend != "auto" && backend != "bpf" && backend != "procfs" && backend != "htop")
             throw std::runtime_error("invalid backend");
         if (!batch && !isatty(STDIN_FILENO))
             throw std::runtime_error("interactive mode requires a terminal; use --batch");
         std::string warning;
         std::unique_ptr<TaskSource> src;
-        if (backend != "procfs")
+        if (backend == "htop")
+            src = make_htop_source();
+        else if (backend != "procfs")
             src = make_bpf_source(warning);
         if (!src) {
             if (backend == "bpf")

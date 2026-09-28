@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repeatable collection benchmark. Run as root to compare both backends."""
+"""Repeatable collection benchmark. Run as root to include the BPF backend."""
 import argparse
 import json
 import resource
@@ -20,7 +20,7 @@ children = []
 try:
     for _ in range(args.spawn):
         children.append(subprocess.Popen(['sleep', '120'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
-    for backend in ('bpf', 'procfs'):
+    for backend in ('bpf', 'procfs', 'htop'):
         before = resource.getrusage(resource.RUSAGE_CHILDREN)
         start = time.monotonic()
         cmd = [str(args.binary.resolve()), '--backend', backend, '--json', '--iterations', str(args.iterations), '--interval', str(args.interval)]
@@ -35,6 +35,7 @@ try:
         def quantile(p): return latency[min(len(latency)-1, int((len(latency)-1)*p))]
         print(json.dumps({
             'backend': backend, 'samples': len(samples), 'tasks_last': len(samples[-1]['tasks']),
+            'scanned_tasks_last': samples[-1]['scanned_tasks'],
             'wall_seconds': round(elapsed, 3),
             'cpu_seconds': round(after.ru_utime + after.ru_stime - before.ru_utime - before.ru_stime, 3),
             'sample_ms_p50': round(quantile(.5), 3), 'sample_ms_p95': round(quantile(.95), 3),

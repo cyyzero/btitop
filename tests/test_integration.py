@@ -24,3 +24,37 @@ try:
 finally:
     probe.terminate()
     probe.wait()
+
+# Keep several threads alive while comparing process and thread views. This
+# verifies that the htop-style backend traverses tasks even with threads hidden.
+threaded = subprocess.Popen(
+    [sys.executable, '-u', '-c',
+     'import threading, time\n'
+     'for _ in range(3):\n'
+     '    threading.Thread(target=time.sleep, args=(10,), daemon=True).start()\n'
+     'print("ready", flush=True)\n'
+     'time.sleep(10)\n'],
+    stdout=subprocess.PIPE, text=True)
+try:
+    assert threaded.stdout.readline().strip() == 'ready'
+    def snapshot(*extra):
+        result = subprocess.run(
+            [binary, '--backend=htop', '--json', '--pid', str(threaded.pid),
+             '--iterations=1', *extra],
+            text=True, capture_output=True, check=True, timeout=4)
+        return json.loads(result.stdout)
+
+    process = snapshot()
+    thread = snapshot('--threads')
+    assert process['backend'] == thread['backend'] == 'htop'
+    assert len(process['tasks']) == 1
+    assert len(thread['tasks']) >= 4
+    assert process['scanned_tasks'] >= len(thread['tasks'])
+    assert thread['scanned_tasks'] >= len(thread['tasks'])
+    leader = next(t for t in thread['tasks'] if t['tid'] == threaded.pid)
+    assert all(t['pid'] == threaded.pid for t in thread['tasks'])
+    assert all(t['rss_bytes'] == leader['rss_bytes'] for t in thread['tasks'])
+    assert all(t['shared_bytes'] == leader['shared_bytes'] for t in thread['tasks'])
+finally:
+    threaded.terminate()
+    threaded.wait()

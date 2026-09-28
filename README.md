@@ -1,6 +1,6 @@
 # btitop
 
-A Linux terminal task monitor using a BPF task iterator, with a procfs fallback. The collection, metric, query, and presentation layers are independent. `btitop` defaults to one sample per second and focuses on low monitoring overhead.
+A Linux terminal task monitor using a BPF task iterator, with procfs and htop-style scanning backends. The collection, metric, query, and presentation layers are independent. `btitop` defaults to one sample per second and focuses on low monitoring overhead.
 
 ![btitop running in a terminal](assets/screenshot.png)
 
@@ -23,12 +23,14 @@ BPF loading normally requires elevated privileges or suitable BPF capabilities. 
 
 ```sh
 ./build/btitop --backend=procfs
+./build/btitop --backend=htop
+./build/btitop --backend=htop --threads
 sudo ./build/btitop --backend=bpf --threads
 ./build/btitop --json --iterations=2 --interval=1
 ./build/btitop --batch --pid=1234 --sort=mem
 ```
 
-Options: `--backend=auto|bpf|procfs`, `--interval=SECONDS` (0.1–3600), `--pid=PID`, `--user=NAME|UID`, `--threads`, `--sort=cpu|mem|pid|time|name`, `--batch`, `--json`, `--iterations=N`, `--no-color`.
+Options: `--backend=auto|bpf|procfs|htop`, `--interval=SECONDS` (0.1–3600), `--pid=PID`, `--user=NAME|UID`, `--threads`, `--sort=cpu|mem|pid|time|name`, `--batch`, `--json`, `--iterations=N`, `--no-color`. `htop` always enumerates `/proc/PID/task`, including when only process rows are displayed. It uses the leader's process CPU and memory counters in process view, and each thread's CPU counter with shared process memory in thread view. This matches htop's traversal pattern; it is not a clone of all htop field semantics or its UI. The header and JSON `scanned_tasks` count distinguish scanned tasks from displayed rows. `auto` still selects BPF or the lighter procfs backend.
 
 Keys: `q` quit, arrows/`j` and `K` move, `h` help, `t` threads, `c` command line, `/` search, `u` UID filter, `p` PID filter, `s` sort, `R` reverse, `z` tree, `f` choose columns (comma-separated names), `I` normalized CPU, `1` per-core CPU, `+`/`-` interval, Enter details, `k` signal, `r` renice. Signal and renice require typing `YES` after choosing the target and parameter. Display settings are saved under `$XDG_CONFIG_HOME/btitop/config` (or `~/.config/btitop/config`).
 
@@ -40,6 +42,6 @@ The BPF sampling path does not scan per-task procfs files. The TUI reads `/proc/
 
 ## Performance and architecture
 
-[Architecture](docs/architecture.md) describes the data flow. [Benchmarks](docs/benchmarks.md) records reproducible measurements and perf findings. [Scenario comparison](docs/comparison.md) compares btitop with top and htop. The included `tools/benchmark.py` can compare both collection backends under a chosen task count; it does not modify system settings. Run it with permissions sufficient for BPF loading.
+[Architecture](docs/architecture.md) describes the data flow. [Benchmarks](docs/benchmarks.md) records reproducible measurements and perf findings. [Scenario comparison](docs/comparison.md) compares btitop with top and htop. The included `tools/benchmark.py` compares the BPF, procfs and htop-style collection backends under a chosen task count; it does not modify system settings. Run it with permissions sufficient for BPF loading.
 
 Current builds target x86-64 and arm64 Linux. The BPF program is built against the current kernel's BTF and uses CO-RE relocations. Linux 6.6 and 6.12 compatibility remains to be verified on those kernels; a successful build on this host does not establish that compatibility.

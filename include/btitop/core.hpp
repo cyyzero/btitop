@@ -43,6 +43,7 @@ struct Snapshot {
     uint64_t boottime_ns{};
     bool thread_mode{};
     std::string backend, diagnostic;
+    size_t scanned_tasks{};
     SystemInfo system;
     std::vector<Task> tasks;
 };
@@ -51,8 +52,10 @@ class TaskSource {
     virtual ~TaskSource() = default;
     virtual std::string name() const = 0;
     virtual bool collect(std::vector<Task> &out, bool threads, std::string &error) = 0;
+    virtual size_t scanned_tasks() const = 0;
 };
 std::unique_ptr<TaskSource> make_proc_source();
+std::unique_ptr<TaskSource> make_htop_source();
 std::unique_ptr<TaskSource> make_bpf_source(std::string &error);
 SystemInfo read_system();
 class Metrics {
