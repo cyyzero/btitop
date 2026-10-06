@@ -135,7 +135,7 @@ class HtopSource final : public TaskSource {
 
   public:
     std::string name() const override {
-        return "htop";
+        return "procfs";
     }
     size_t scanned_tasks() const override {
         return scanned_;

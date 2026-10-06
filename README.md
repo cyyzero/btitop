@@ -23,14 +23,15 @@ BPF loading normally requires elevated privileges or suitable BPF capabilities. 
 
 ```sh
 ./build/btitop --backend=procfs
-./build/btitop --backend=htop
-./build/btitop --backend=htop --threads
+./build/btitop --mode=htop --backend=procfs
+sudo ./build/btitop --mode=htop --backend=bpf
+./build/btitop --mode=htop --backend=procfs --threads
 sudo ./build/btitop --backend=bpf --threads
 ./build/btitop --json --iterations=2 --interval=1
 ./build/btitop --batch --pid=1234 --sort=mem
 ```
 
-Options: `--backend=auto|bpf|procfs|htop`, `--interval=SECONDS` (0.1–3600), `--pid=PID`, `--user=NAME|UID`, `--threads`, `--sort=cpu|mem|pid|time|name`, `--batch`, `--json`, `--iterations=N`, `--no-color`. `htop` always enumerates `/proc/PID/task`, including when only process rows are displayed. It uses the leader's process CPU and memory counters in process view, and each thread's CPU counter with shared process memory in thread view. This matches htop's traversal pattern; it is not a clone of all htop field semantics or its UI. The header and JSON `scanned_tasks` count distinguish scanned tasks from displayed rows. `auto` still selects BPF or the lighter procfs backend.
+Options: `--mode=top|htop`, `--backend=auto|bpf|procfs`, `--interval=SECONDS` (0.1–3600), `--pid=PID`, `--user=NAME|UID`, `--threads`, `--sort=cpu|mem|pid|time|name`, `--batch`, `--json`, `--iterations=N`, `--no-color`. The mode selects a scan policy and the backend selects a data source. With procfs, `htop` always enumerates `/proc/PID/task`, including when only process rows are displayed; `top` reads process leaders unless thread view is enabled. With BPF, both modes currently use the same `iter/task` scan of all threads, needed to assemble process CPU correctly. Thus the BPF mode pair is a useful CLI comparison, but it does not represent two different BPF algorithms. The header and JSON identify both mode and backend and distinguish `scanned_tasks` from displayed rows. The former `--backend=htop` spelling remains an alias for `--mode=htop --backend=procfs`. `auto` selects BPF or the procfs scan policy for the selected mode.
 
 Keys: `q` quit, arrows/`j` and `K` move, `h` help, `t` threads, `c` command line, `/` search, `u` UID filter, `p` PID filter, `s` sort, `R` reverse, `z` tree, `f` choose columns (comma-separated names), `I` normalized CPU, `1` per-core CPU, `+`/`-` interval, Enter details, `k` signal, `r` renice. Signal and renice require typing `YES` after choosing the target and parameter. Display settings are saved under `$XDG_CONFIG_HOME/btitop/config` (or `~/.config/btitop/config`).
 
@@ -42,6 +43,6 @@ The BPF sampling path does not scan per-task procfs files. The TUI reads `/proc/
 
 ## Performance and architecture
 
-[Architecture](docs/architecture.md) describes the data flow. [Benchmarks](docs/benchmarks.md) records reproducible measurements and perf findings. [Scenario comparison](docs/comparison.md) compares btitop with top and htop. The included `tools/benchmark.py` compares the BPF, procfs and htop-style collection backends under a chosen task count; it does not modify system settings. Run it with permissions sufficient for BPF loading.
+[Architecture](docs/architecture.md) describes the data flow. [Benchmarks](docs/benchmarks.md) records reproducible measurements and perf findings. [Mode/backend matrix](docs/mode-benchmark.md) compares all four combinations and standard top/htop across process and thread counts. [Scenario comparison](docs/comparison.md) contains earlier measurements. `tools/compare_modes.py` reproduces the matrix with BPF loading privileges; `tools/benchmark.py` remains a quick three-path collection check.
 
 Current builds target x86-64 and arm64 Linux. The BPF program is built against the current kernel's BTF and uses CO-RE relocations. Linux 6.6 and 6.12 compatibility remains to be verified on those kernels; a successful build on this host does not establish that compatibility.

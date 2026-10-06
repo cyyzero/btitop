@@ -213,10 +213,10 @@ void draw(const Snapshot &s, UiOptions &opt, const std::vector<size_t> &ids, siz
     erase();
     int y = 0;
     std::ostringstream title;
-    title << "btitop  " << s.backend << "  up " << static_cast<int>(s.system.uptime / 3600)
-          << "h  load " << std::fixed << std::setprecision(2) << s.system.load[0] << ' '
-          << s.system.load[1] << ' ' << s.system.load[2] << "  shown " << s.tasks.size()
-          << "  scanned " << s.scanned_tasks;
+    title << "btitop  " << s.mode << '/' << s.backend << "  up "
+          << static_cast<int>(s.system.uptime / 3600) << "h  load " << std::fixed
+          << std::setprecision(2) << s.system.load[0] << ' ' << s.system.load[1] << ' '
+          << s.system.load[2] << "  shown " << s.tasks.size() << "  scanned " << s.scanned_tasks;
     attron(A_BOLD);
     put(y++, 0, title.str(), COLS);
     attroff(A_BOLD);
@@ -283,9 +283,9 @@ void load_ui_settings(UiOptions &options) {
     load_settings(options);
 }
 void print_text(const Snapshot &s, const Query &q) {
-    std::cout << "btitop " << s.backend << "  load " << s.system.load[0] << ' ' << s.system.load[1]
-              << ' ' << s.system.load[2] << "  shown " << s.tasks.size() << "  scanned "
-              << s.scanned_tasks << '\n';
+    std::cout << "btitop " << s.mode << '/' << s.backend << "  load " << s.system.load[0] << ' '
+              << s.system.load[1] << ' ' << s.system.load[2] << "  shown " << s.tasks.size()
+              << "  scanned " << s.scanned_tasks << '\n';
     std::cout << "    PID USER      PR  NI   VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND\n";
     for (auto i : select(s.tasks, q))
         std::cout << cells(s.tasks[i], false, false, 0, UiOptions{}.fields) << '\n';
@@ -294,7 +294,8 @@ void print_json(const Snapshot &s, const Query &q) {
     auto ns = [](Clock::time_point t) {
         return std::chrono::duration_cast<std::chrono::nanoseconds>(t.time_since_epoch()).count();
     };
-    std::cout << "{\"version\":1,\"backend\":" << json_quote(s.backend)
+    std::cout << "{\"version\":1,\"mode\":" << json_quote(s.mode)
+              << ",\"backend\":" << json_quote(s.backend)
               << ",\"scanned_tasks\":" << s.scanned_tasks
               << ",\"begin_monotonic_ns\":" << ns(s.begin) << ",\"end_monotonic_ns\":" << ns(s.end)
               << ",\"diagnostic\":" << json_quote(s.diagnostic)

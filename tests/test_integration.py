@@ -16,6 +16,7 @@ try:
     assert len(frames) == 2
     assert frames[0]['version'] == 1
     assert frames[0]['backend'] == 'procfs'
+    assert frames[0]['mode'] == 'top'
     assert frames[0]['tasks'][0]['pid'] == probe.pid
     assert frames[0]['tasks'][0]['cpu_percent'] is None
     assert frames[1]['tasks'][0]['cpu_percent'] is not None
@@ -39,14 +40,15 @@ try:
     assert threaded.stdout.readline().strip() == 'ready'
     def snapshot(*extra):
         result = subprocess.run(
-            [binary, '--backend=htop', '--json', '--pid', str(threaded.pid),
+            [binary, '--mode=htop', '--backend=procfs', '--json', '--pid', str(threaded.pid),
              '--iterations=1', *extra],
             text=True, capture_output=True, check=True, timeout=4)
         return json.loads(result.stdout)
 
     process = snapshot()
     thread = snapshot('--threads')
-    assert process['backend'] == thread['backend'] == 'htop'
+    assert process['backend'] == thread['backend'] == 'procfs'
+    assert process['mode'] == thread['mode'] == 'htop'
     assert len(process['tasks']) == 1
     assert len(thread['tasks']) >= 4
     assert process['scanned_tasks'] >= len(thread['tasks'])
@@ -55,6 +57,17 @@ try:
     assert all(t['pid'] == threaded.pid for t in thread['tasks'])
     assert all(t['rss_bytes'] == leader['rss_bytes'] for t in thread['tasks'])
     assert all(t['shared_bytes'] == leader['shared_bytes'] for t in thread['tasks'])
+    alias = subprocess.run([binary, '--backend=htop', '--json', '--iterations=1', '--pid', str(threaded.pid)],
+                           text=True, capture_output=True, check=True, timeout=4)
+    assert json.loads(alias.stdout)['mode'] == 'htop'
+    forced_fallback = subprocess.run(
+        [binary, '--mode=htop', '--backend=auto', '--json', '--iterations=1',
+         '--pid', str(threaded.pid)],
+        env={**os.environ, 'BTITOP_BPF_OBJECT': '/nonexistent/btitop-test.o'},
+        text=True, capture_output=True, check=True, timeout=4)
+    fallback = json.loads(forced_fallback.stdout)
+    assert fallback['mode'] == 'htop' and fallback['backend'] == 'procfs'
+    assert fallback['scanned_tasks'] >= len(thread['tasks'])
 finally:
     threaded.terminate()
     threaded.wait()

@@ -23,16 +23,17 @@ ctest --test-dir build --output-on-failure
 
 ```sh
 ./build/btitop --backend=procfs
-./build/btitop --backend=htop
-./build/btitop --backend=htop --threads
+./build/btitop --mode=htop --backend=procfs
+sudo ./build/btitop --mode=htop --backend=bpf
+./build/btitop --mode=htop --backend=procfs --threads
 sudo ./build/btitop --backend=bpf --threads
 ./build/btitop --json --iterations=2 --interval=1
 ```
 
-参数包括 `--backend=auto|bpf|procfs|htop`、`--interval`、`--pid`、`--user`、`--threads`、`--sort`、`--batch`、`--json`、`--iterations`、`--no-color`。`htop` 模式即使只显示进程行，也会遍历 `/proc/PID/task` 下的全部线程；进程视图采用进程累计 CPU 和内存，线程视图采用各线程 CPU 及共享的进程内存。这模拟 htop 的遍历方式，并非复制其全部字段语义或界面。标题与 JSON 中的 `scanned_tasks` 便于区分扫描量和展示行数。`auto` 仍在 BPF 和轻量 procfs 后端之间选择。
+参数包括 `--mode=top|htop`、`--backend=auto|bpf|procfs`、`--interval`、`--pid`、`--user`、`--threads`、`--sort`、`--batch`、`--json`、`--iterations`、`--no-color`。mode 控制扫描口径，backend 控制数据来源。procfs 的 top 模式默认只读进程首线程；htop 模式即使只显示进程，也遍历 `/proc/PID/task` 的全部线程。BPF 的两个模式目前都使用同一条 `iter/task` 全线程扫描路径，以正确合成进程累计 CPU；因此四格命令可比较，但 BPF 两格并不是不同算法。标题和 JSON 同时标明 mode、backend，并用 `scanned_tasks` 区分扫描量和显示行数。旧写法 `--backend=htop` 仍作为 `--mode=htop --backend=procfs` 的别名。
 
 常用按键：`q` 退出，方向键/`j`/`K` 移动，`h` 帮助，`t` 线程模式，`c` 完整命令行，`/` 搜索，`u` 用户筛选，`p` PID 筛选，`s` 排序，`R` 反向，`z` 树视图，`f` 选择列，`I` CPU 归一化，`1` 逐核 CPU，`+`/`-` 调整刷新间隔，回车查看详情，`k` 发送信号，`r` 调整 nice。进程操作需要再次输入 `YES`。展示设置保存于 `$XDG_CONFIG_HOME/btitop/config`，未设置时使用 `~/.config/btitop/config`。
 
 首轮 `%CPU` 显示 `N/A`。默认按 top 的 Irix 模式显示，多线程进程可超过 100%；`I` 切换为按 CPU 数归一化。BPF 的累计 CPU 值和 RSS/SHR 与 procfs 可能有小幅差异，原因与具体字段见[字段矩阵](docs/fields.md)。BPF 周期采集不扫描每任务 procfs；开启命令行显示后，只按需读取可见任务。采样间隔内出现又退出的短命任务可能被遗漏。
 
-[架构说明](docs/architecture.md)和[性能基准](docs/benchmarks.md)包含接口、测试方法与本机结果；[场景对比](docs/comparison.md)记录了与 top、htop 的实测。当前在定制 Linux 7.0 内核上验证；标准 6.6、6.12 内核仍需各自验证。
+[架构说明](docs/architecture.md)和[性能基准](docs/benchmarks.md)包含接口、测试方法与本机结果；[模式与后端四格基准](docs/mode-benchmark.md)记录不同进程、线程数量及标准 top、htop 的多轮 CPU 对比，可用 `tools/compare_modes.py` 复现。[早期场景对比](docs/comparison.md)也保留。当前在定制 Linux 7.0 内核上验证；标准 6.6、6.12 内核仍需各自验证。

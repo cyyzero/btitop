@@ -1,0 +1,97 @@
+{
+  "kernel": "7.0.0-taskstats+",
+  "interval_seconds": 1.0,
+  "iterations": 8,
+  "rounds": 1,
+  "terminal_seconds": 8.0,
+  "results": [
+    {
+      "cpu_seconds": 0.06563,
+      "cpu_percent_one_core": 0.8128527835266611,
+      "wall_seconds": 8.074032755999951,
+      "terminal_bytes": 13172,
+      "mode": "top",
+      "backend": "bpf",
+      "extra_processes": 0,
+      "extra_threads": 0,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.17717,
+      "cpu_percent_one_core": 2.199914031874394,
+      "wall_seconds": 8.05349652000018,
+      "terminal_bytes": 11038,
+      "mode": "top",
+      "backend": "procfs",
+      "extra_processes": 0,
+      "extra_threads": 0,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.07828400000000005,
+      "cpu_percent_one_core": 0.9642197627522738,
+      "wall_seconds": 8.118896025999902,
+      "terminal_bytes": 12561,
+      "mode": "htop",
+      "backend": "bpf",
+      "extra_processes": 0,
+      "extra_threads": 0,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.5707589999999999,
+      "cpu_percent_one_core": 7.012665765221526,
+      "wall_seconds": 8.138973381999904,
+      "terminal_bytes": 11626,
+      "mode": "htop",
+      "backend": "procfs",
+      "extra_processes": 0,
+      "extra_threads": 0,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.086789,
+      "cpu_percent_one_core": 1.0689740890435828,
+      "wall_seconds": 8.118905863999998,
+      "terminal_bytes": 12181,
+      "mode": "top",
+      "backend": "bpf",
+      "extra_processes": 0,
+      "extra_threads": 512,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.2001159999999999,
+      "cpu_percent_one_core": 2.4855254441565435,
+      "wall_seconds": 8.051255337999919,
+      "terminal_bytes": 10419,
+      "mode": "top",
+      "backend": "procfs",
+      "extra_processes": 0,
+      "extra_threads": 512,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.0801420000000001,
+      "cpu_percent_one_core": 0.9874436708647599,
+      "wall_seconds": 8.11610853000002,
+      "terminal_bytes": 13095,
+      "mode": "htop",
+      "backend": "bpf",
+      "extra_processes": 0,
+      "extra_threads": 512,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.7390079999999998,
+      "cpu_percent_one_core": 9.052642133797336,
+      "wall_seconds": 8.163450947000001,
+      "terminal_bytes": 9930,
+      "mode": "htop",
+      "backend": "procfs",
+      "extra_processes": 0,
+      "extra_threads": 512,
+      "round": 1
+    }
+  ]
+}

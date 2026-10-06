@@ -42,7 +42,7 @@ struct Snapshot {
     Clock::time_point begin{}, end{};
     uint64_t boottime_ns{};
     bool thread_mode{};
-    std::string backend, diagnostic;
+    std::string mode, backend, diagnostic;
     size_t scanned_tasks{};
     SystemInfo system;
     std::vector<Task> tasks;

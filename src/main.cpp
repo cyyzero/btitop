@@ -38,6 +38,7 @@ std::string value(int &i, int argc, char **argv, const std::string &arg) {
 class Sampler {
     std::unique_ptr<TaskSource> source_;
     bool automatic_;
+    std::string mode_;
     std::mutex mu_;
     std::condition_variable cv_;
     std::optional<Snapshot> latest_;
@@ -49,9 +50,10 @@ class Sampler {
     uint64_t epoch_{0};
 
   public:
-    Sampler(std::unique_ptr<TaskSource> source, bool automatic, bool threads, double interval)
-        : source_(std::move(source)), automatic_(automatic), threads_(threads),
-          interval_(interval) {
+    Sampler(std::unique_ptr<TaskSource> source, bool automatic, std::string mode, bool threads,
+            double interval)
+        : source_(std::move(source)), automatic_(automatic), mode_(std::move(mode)),
+          threads_(threads), interval_(interval) {
     }
     void start() {
         worker_ = std::jthread([this](std::stop_token stop) { run(stop); });
@@ -63,6 +65,7 @@ class Sampler {
             auto begin = Clock::now();
             Snapshot s;
             s.begin = begin;
+            s.mode = mode_;
             s.backend = source_->name();
             s.system = read_system();
             std::string e;
@@ -79,7 +82,7 @@ class Sampler {
             s.thread_mode = thread_mode;
             if (!source_->collect(s.tasks, thread_mode, e)) {
                 if (automatic_ && source_->name() == "bpf") {
-                    source_ = make_proc_source();
+                    source_ = mode_ == "htop" ? make_htop_source() : make_proc_source();
                     s.backend = source_->name();
                     s.diagnostic = "BPF unavailable: " + e + "; using procfs";
                     metrics_.reset();
@@ -150,6 +153,8 @@ class Sampler {
 int main(int argc, char **argv) {
     try {
         std::string backend = "auto";
+        std::string mode = "top";
+        bool mode_explicit = false;
         UiOptions ui;
         load_ui_settings(ui);
         bool batch = false, json = false;
@@ -157,14 +162,17 @@ int main(int argc, char **argv) {
         for (int i = 1; i < argc; i++) {
             std::string a = argv[i];
             if (a == "--help" || a == "-h") {
-                std::cout
-                    << "btitop [--backend auto|bpf|procfs|htop] [--interval seconds] [--pid PID] "
-                       "[--user USER] [--threads] [--sort cpu|mem|pid|time|name] "
-                       "[--batch|--json] [--iterations N] [--no-color]\n";
+                std::cout << "btitop [--mode top|htop] [--backend auto|bpf|procfs] [--interval "
+                             "seconds] [--pid PID] "
+                             "[--user USER] [--threads] [--sort cpu|mem|pid|time|name] "
+                             "[--batch|--json] [--iterations N] [--no-color]\n";
                 return 0;
             } else if (a.rfind("--backend", 0) == 0)
                 backend = value(i, argc, argv, a);
-            else if (a.rfind("--interval", 0) == 0)
+            else if (a.rfind("--mode", 0) == 0) {
+                mode = value(i, argc, argv, a);
+                mode_explicit = true;
+            } else if (a.rfind("--interval", 0) == 0)
                 ui.interval = std::stod(value(i, argc, argv, a));
             else if (a.rfind("--pid", 0) == 0)
                 ui.query.pid = std::stoi(value(i, argc, argv, a));
@@ -192,22 +200,29 @@ int main(int argc, char **argv) {
             throw std::runtime_error("interval must be 0.1..3600 seconds");
         if (backend != "auto" && backend != "bpf" && backend != "procfs" && backend != "htop")
             throw std::runtime_error("invalid backend");
+        if (mode != "top" && mode != "htop")
+            throw std::runtime_error("invalid mode");
+        if (backend == "htop") {
+            if (mode_explicit && mode != "htop")
+                throw std::runtime_error(
+                    "--backend=htop is an alias for --mode=htop --backend=procfs");
+            mode = "htop";
+            backend = "procfs";
+        }
         if (!batch && !isatty(STDIN_FILENO))
             throw std::runtime_error("interactive mode requires a terminal; use --batch");
         std::string warning;
         std::unique_ptr<TaskSource> src;
-        if (backend == "htop")
-            src = make_htop_source();
-        else if (backend != "procfs")
+        if (backend != "procfs")
             src = make_bpf_source(warning);
         if (!src) {
             if (backend == "bpf")
                 throw std::runtime_error(warning);
-            src = make_proc_source();
+            src = mode == "htop" ? make_htop_source() : make_proc_source();
             if (backend == "auto")
                 std::cerr << "btitop: BPF unavailable (" << warning << "), using procfs\n";
         }
-        Sampler sampler(std::move(src), backend == "auto", ui.threads, ui.interval);
+        Sampler sampler(std::move(src), backend == "auto", mode, ui.threads, ui.interval);
         sampler.start();
         if (batch) {
             int count = 0;
