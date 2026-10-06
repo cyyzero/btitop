@@ -1,74 +1,93 @@
-# Process and thread scaling: mode/backend benchmark
+# Matched process and thread visibility benchmark
 
-This experiment, measured on 2026-10-07, separates the **scan policy** (`--mode=top|htop`) from the **data source** (`--backend=bpf|procfs`). Standard top and htop are separate reference programs; neither accepts a btitop backend choice. All measurements were made on one 16-CPU host running Linux `7.0.0-taskstats+`, procps-ng top 4.0.4, and htop 3.3.0. The processes ran as root so BPF could load.
+This benchmark was rerun on 2026-10-07 on a 16-CPU host running Linux `7.0.0-taskstats+`, procps-ng top 4.0.4, and htop 3.3.0. The same 110×30 pseudo-terminal and refresh interval were used for each interactive program. All monitors ran as root to permit the explicit BPF backend. CPU% is process user plus system CPU time divided by wall time, as a percentage of **one** CPU. Each table entry is the median of three independent runs; individual values remain in the linked JSON files.
 
-In process view, top/procfs reads process leaders, while htop/procfs reads every `/proc/PID/task/TID/stat` and still shows one process row. Both BPF mode selections run the **same** all-task iterator; live thread CPU must be included to calculate process CPU. Therefore the two BPF columns are independent repetitions of one implementation, not distinct algorithms.
+The comparison is split into **process view** and **thread view**. In process view, btitop omits `--threads`, top omits `-H`, and htop uses `hide_userland_threads=1`. In thread view, btitop uses `--threads`, top uses `-H`, and htop uses `hide_userland_threads=0`. Both htop configurations explicitly set `hide_kernel_threads=0`, matching btitop's inclusion of kernel tasks. This aligns task visibility, terminal size and refresh cadence; each program still has its own fields, layout, sorting details and collection strategy. Standard top and htop do not accept btitop's `--backend` switch.
 
-## Controlled workload and measurement
+`--mode=top|htop` is btitop's procfs scan policy, while `--backend=bpf|procfs` selects its data source. Both BPF modes currently use the same all-task iterator, because process CPU accounting needs the live threads. In process view, top/procfs reads process leaders, whereas htop/procfs reads every `/proc/PID/task/TID/stat` and then displays one process row. In thread view, both procfs policies visit task stat files.
 
-The tables report **total newly added processes / total newly added tasks**, counting every process's main thread as one task. The benchmark CLI and the recorded `extra_processes` / `extra_threads` fields instead describe how the load is generated: a number of extra `sleep` processes, plus threads created inside one additional worker process when requested. For example, input `--scenarios=0:128` creates one worker process with 129 tasks, so its table row is **1 / 129**; input `100:128` produces **101 / 229**. The `0 / 0` row adds no synthetic workload, but the host still had about 423–425 process rows and about 1,618–1,622 tasks at baseline. Future raw runs also include the derived `added_processes_total` and `added_tasks_total` fields; the archived runs can be converted with the same rule. Every scenario ran three rounds. The four btitop combinations rotated order across rounds; top and htop alternated order. Workload children were terminated after each scenario. `CPU%` means process user + system CPU time divided by wall time, as a fraction of **one** CPU; the tables give the median of three runs. Raw per-run values are in [`benchmarks/process-thread-scaling`](../benchmarks/process-thread-scaling/).
+## Workloads and measurement
 
-The first test used six JSON samples at a 0.2-second interval. Its CPU% includes collection, metric calculation, selection and JSON serialization. Sample p50 is the measured time from the beginning of global-stat reading through task collection; it excludes metric calculation and output. All four combinations emitted process rows, so the JSON row count is comparable.
+The first column is **total added processes / total added tasks**, including each process's main thread. The benchmark CLI accepts `extra_sleep_processes:extra_worker_threads`: `0:128` creates one worker process with 128 additional threads, hence **1 / 129**. `100:128` creates 100 sleep processes plus that worker, hence **101 / 229**. The `0 / 0` row adds no synthetic workload; the host already had roughly 430 processes and 1,830 tasks. Every scenario ran three rounds; monitor order rotated within each workload. Workload processes were terminated after each scenario.
 
-| New processes / new tasks | top/BPF CPU% | top/procfs CPU% | htop/BPF CPU% | htop/procfs CPU% |
-| --- | ---: | ---: | ---: | ---: |
-| 0 / 0 | 4.73 | 9.63 | 4.88 | 25.68 |
-| 100 / 100 | 4.78 | 11.80 | 4.98 | 28.08 |
-| 300 / 300 | 5.51 | 15.39 | 5.56 | 33.56 |
-| 1 / 129 | 4.48 | 9.53 | 5.18 | 29.65 |
-| 1 / 513 | 4.87 | 9.86 | 5.00 | 33.91 |
-| 101 / 229 | 5.11 | 11.61 | 5.35 | 30.11 |
+The full terminal matrix ran for two seconds per monitor at a 0.2-second refresh. CPU% includes startup, sampling, metric calculation and rendering. Raw results: [process view](../benchmarks/process-thread-scaling/tui-process.json) and [thread view](../benchmarks/process-thread-scaling/tui-threads.json).
 
-| New processes / new tasks | top/BPF p50 ms | top/procfs p50 ms | htop/BPF p50 ms | htop/procfs p50 ms |
-| --- | ---: | ---: | ---: | ---: |
-| 0 / 0 | 2.39 | 14.09 | 2.21 | 42.41 |
-| 100 / 100 | 2.19 | 17.75 | 2.38 | 46.12 |
-| 300 / 300 | 2.82 | 22.84 | 2.64 | 56.59 |
-| 1 / 129 | 2.45 | 13.79 | 2.74 | 46.48 |
-| 1 / 513 | 3.13 | 14.47 | 3.03 | 54.93 |
-| 101 / 229 | 2.67 | 16.93 | 2.87 | 50.41 |
+### Terminal CPU%, process rows
 
-## Actual terminal programs
-
-Each program then ran in a 110×30 pseudo-terminal for two seconds with a 0.2-second refresh. The table compares whole-program CPU%, including startup and rendering. The btitop modes use the same screen layout. **Standard htop 3.3.0 shows userland threads by default**, while all btitop rows below are process view; top is also in process view. Standard top and htop have different fields and terminal output, so their figures are reference costs rather than normalized per-field comparisons.
-
-| New processes / new tasks | btitop top/BPF | btitop top/procfs | btitop htop/BPF | btitop htop/procfs | standard top | standard htop |
+| Added processes / tasks | btitop top/BPF | top/procfs | htop/BPF | htop/procfs | standard top | standard htop |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0 / 0 | 3.82 | 13.65 | 4.29 | 28.54 | 5.22 | 32.83 |
-| 100 / 100 | 4.02 | 14.76 | 4.16 | 30.07 | 6.16 | 34.23 |
-| 300 / 300 | 4.37 | 19.12 | 4.76 | 33.23 | 7.04 | 38.45 |
-| 1 / 129 | 3.86 | 13.83 | 4.36 | 30.16 | 5.01 | 36.25 |
-| 1 / 513 | 3.89 | 11.58 | 3.93 | 30.08 | 5.13 | 41.34 |
-| 101 / 229 | 3.75 | 12.89 | 3.73 | 29.15 | 6.01 | 37.33 |
+| 0 / 0 | 3.76 | 10.92 | 4.26 | 29.42 | 5.31 | 28.05 |
+| 100 / 100 | 3.87 | 14.19 | 4.44 | 32.45 | 6.13 | 30.11 |
+| 300 / 300 | 4.65 | 18.69 | 4.92 | 34.32 | 8.00 | 33.08 |
+| 1 / 129 | 3.87 | 11.41 | 4.46 | 30.84 | 5.56 | 30.17 |
+| 1 / 513 | 4.16 | 11.60 | 4.66 | 34.62 | 5.55 | 29.78 |
+| 101 / 229 | 4.25 | 13.85 | 4.62 | 33.16 | 6.43 | 30.04 |
 
-To separate thread display from traversal, standard htop 3.3.0 was rerun with `hide_userland_threads=1`, again three rounds at 0.2-second refresh. Its whole-program CPU% medians were **23.99, 24.74, 27.84, 24.39, 24.58, 24.22** in the six scenarios in table order. Hiding threads removes much of the thread-count scaling, but does not eliminate procfs directory traversal or other per-process work. The raw values are in [`htop-hidden-matrix.json`](../benchmarks/process-thread-scaling/htop-hidden-matrix.json).
+### Terminal CPU%, thread rows
 
-The two-second window gives startup work a large share. As a check at the project's default **one-second refresh**, each program ran for eight seconds under baseline and +512 threads. These longer-window results are single runs, not three-round medians:
-
-| New processes / new tasks | btitop top/BPF | btitop top/procfs | btitop htop/BPF | btitop htop/procfs | standard top | standard htop |
+| Added processes / tasks | btitop top/BPF | top/procfs | htop/BPF | htop/procfs | standard top | standard htop |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0 / 0 | 0.81 | 2.20 | 0.96 | 7.01 | 1.31 | 13.60 |
-| 1 / 513 | 1.07 | 2.49 | 0.99 | 9.05 | 1.26 | 16.79 |
+| 0 / 0 | 4.72 | 32.26 | 4.68 | 34.73 | 17.98 | 38.66 |
+| 100 / 100 | 4.53 | 34.79 | 4.80 | 37.02 | 18.92 | 40.10 |
+| 300 / 300 | 5.24 | 38.00 | 5.24 | 41.51 | 18.56 | 42.00 |
+| 1 / 129 | 4.50 | 33.72 | 4.76 | 34.27 | 17.84 | 40.13 |
+| 1 / 513 | 5.33 | 40.04 | 5.47 | 38.99 | 20.34 | 42.38 |
+| 101 / 229 | 4.99 | 36.24 | 5.14 | 37.42 | 19.95 | 41.27 |
 
-The standard htop column above again uses its default visible-thread setting. With userland threads hidden, a separate two-round, eight-second run measured **11.02%** at baseline and **11.36%** with 512 added threads (medians). The raw runs are in [`htop-hidden-default.json`](../benchmarks/process-thread-scaling/htop-hidden-default.json).
+Hiding thread rows reduces standard htop's cost markedly. Its process-view CPU% changes little between baseline and 512 added threads because htop skips much per-thread field work for hidden rows. btitop's htop/procfs mode still reads every thread stat in process view, so its cost rises more. The [htop 3.3.0 process-table code](https://github.com/htop-dev/htop/blob/3.3.0/linux/LinuxProcessTable.c) explains the different traversal and skip behavior; a [later revision](https://github.com/htop-dev/htop/blob/bb3ee0a/linux/LinuxProcessTable.c) also removes a redundant nested task-directory attempt in this installed version. These are different implementations even when they show the same classes of task.
 
-### Why installed htop 3.3.0 does more work
+## Default one-second refresh
 
-The [3.3.0 process-table source](https://github.com/htop-dev/htop/blob/3.3.0/linux/LinuxProcessTable.c) opens `/proc/PID/task`, opens each TID directory, and may read `stat`, `statm`, `status`, and command-line data. Its default settings [leave userland threads visible](https://github.com/htop-dev/htop/blob/3.3.0/Settings.c). Even when threads are hidden, it still enumerates them and skips most per-thread field reads only after identifying an existing thread. Version 3.3.0 also attempts to open `task` beneath each thread directory; a [later source revision](https://github.com/htop-dev/htop/blob/bb3ee0a/linux/LinuxProcessTable.c) avoids that redundant recursion.
+To reduce startup's share, each monitor also ran for eight seconds at the default one-second refresh under baseline and 512 added threads. Both process and thread views ran three rounds. These top and htop triples were measured sequentially rather than simultaneously. Raw results: [top process](../benchmarks/process-thread-scaling/top-default-process.json), [top threads](../benchmarks/process-thread-scaling/top-default-threads.json), [htop process](../benchmarks/process-thread-scaling/htop-default-process.json), and [htop threads](../benchmarks/process-thread-scaling/htop-default-threads.json).
 
-In one separate five-second `strace -c` run at a one-second refresh, standard top made about **5,406 `openat` and 5,397 `read` calls**, while default htop made about **39,919 `openat` and 66,504 `read` calls**. With userland threads hidden, htop made about **30,443 `openat` and 43,476 `read` calls**; the [syscall summaries](../benchmarks/process-thread-scaling/strace-htop-default.txt) are preserved alongside the [top](../benchmarks/process-thread-scaling/strace-top.txt) and [hidden-thread htop](../benchmarks/process-thread-scaling/strace-htop-hidden.txt) summaries. A separate four-frame detailed trace showed **8,745 failed attempts** to open a nested `task` directory under a TID. `strace` changes timing, so these counts identify work rather than directly partitioning the uninstrumented CPU percentages. They also show that btitop's `htop` procfs mode is a controlled all-thread scan workload, not an exact clone of htop 3.3.0's field or UI behavior.
+| View | Added processes / tasks | btitop top/BPF | top/procfs | standard top | btitop htop/BPF | htop/procfs | standard htop |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Processes | 0 / 0 | 1.02 | 2.48 | 1.32 | 0.99 | 7.64 | 11.73 |
+| Processes | 1 / 513 | 1.10 | 2.48 | 1.36 | 1.08 | 8.81 | 12.29 |
+| Threads | 0 / 0 | 1.17 | 9.42 | 5.47 | 1.21 | 9.17 | 16.16 |
+| Threads | 1 / 513 | 1.37 | 11.59 | 6.83 | 1.29 | 11.53 | 18.62 |
 
-The observed pattern is consistent: the process-only procfs path scales with process count, the htop-style procfs path also scales with thread count, and BPF remains low in these cases despite scanning all tasks. This does not prove a fixed speedup on other machines. Background tasks changed slightly between runs, the sample is small, the TUI programs render different amounts of data, and the 10,000-task and other-kernel cases remain untested.
+For the standard htop process view, the three runs ranged from 10.98–12.42% at baseline and 11.64–13.34% with 512 additional threads. In thread view they ranged from 14.51–17.00% and 18.14–19.72% respectively. Thus the difference between its two visibility settings is larger than this run-to-run spread. The btitop htop/BPF medians were 0.99–1.29% across these four matched cases, but its displayed fields and terminal output are not identical to standard htop's.
+
+## Collection and JSON path
+
+The JSON benchmark takes six samples at a 0.2-second interval. Its CPU% includes collection, metric calculation, row selection and JSON serialization, but no terminal rendering. `sample_ms_p50` measures global-stat reading through task collection, excluding subsequent calculation and output. Raw results: [process view](../benchmarks/process-thread-scaling/scan-process.json) and [thread view](../benchmarks/process-thread-scaling/scan-threads.json).
+
+### JSON CPU%, process rows
+
+| Added processes / tasks | top/BPF | top/procfs | htop/BPF | htop/procfs |
+| --- | ---: | ---: | ---: | ---: |
+| 0 / 0 | 5.25 | 11.95 | 6.30 | 31.98 |
+| 100 / 100 | 5.74 | 14.46 | 6.64 | 32.13 |
+| 300 / 300 | 6.21 | 16.06 | 6.40 | 36.56 |
+| 1 / 129 | 5.27 | 12.83 | 6.43 | 32.22 |
+| 1 / 513 | 5.70 | 12.92 | 6.71 | 33.63 |
+| 101 / 229 | 5.77 | 14.62 | 6.86 | 37.73 |
+
+### JSON CPU%, thread rows
+
+| Added processes / tasks | top/BPF | top/procfs | htop/BPF | htop/procfs |
+| --- | ---: | ---: | ---: | ---: |
+| 0 / 0 | 7.05 | 34.95 | 7.94 | 37.69 |
+| 100 / 100 | 7.76 | 38.32 | 7.79 | 38.34 |
+| 300 / 300 | 8.19 | 41.16 | 7.64 | 43.88 |
+| 1 / 129 | 8.21 | 38.96 | 8.39 | 39.44 |
+| 1 / 513 | 8.38 | 44.23 | 8.36 | 42.36 |
+| 101 / 229 | 8.24 | 38.45 | 8.46 | 41.62 |
+
+At baseline, collection p50 medians in process view were 3.04 ms (top/BPF), 19.00 ms (top/procfs), 3.21 ms (htop/BPF), and 49.28 ms (htop/procfs). In thread view they were 2.36, 55.66, 2.51, and 56.93 ms respectively. The BPF paths remain lower on this host, but these numbers are not a guaranteed speedup on other machines. The two-second terminal window includes substantial startup work; background tasks changed between runs; the programs render different fields; and 10,000-task and other-kernel cases remain untested.
 
 ## Reproduce
 
 ```sh
 cmake -S . -B build -G Ninja
 cmake --build build
-sudo python3 tools/compare_modes.py --rounds 3 --iterations 6 --interval 0.2 --output scan-matrix.json
-sudo python3 tools/compare_modes.py --rounds 3 --iterations 6 --interval 0.2 --tui-matrix-only --reference-seconds 2 --output btitop-tui-matrix.json
-sudo python3 tools/compare_modes.py --rounds 3 --iterations 6 --interval 0.2 --references-only --reference-seconds 2 --output reference-tui-matrix.json
-sudo python3 tools/compare_modes.py --rounds 3 --iterations 6 --interval 0.2 --references-only --reference-apps htop-hidden --reference-seconds 2 --output htop-hidden-matrix.json
+for view in process threads; do
+  sudo python3 tools/compare_modes.py --display "$view" --rounds 3 --iterations 6 --interval 0.2 --output "benchmarks/process-thread-scaling/scan-$view.json"
+  sudo python3 tools/compare_modes.py --display "$view" --rounds 3 --iterations 6 --interval 0.2 --matched-tui-all --reference-seconds 2 --output "benchmarks/process-thread-scaling/tui-$view.json"
+  sudo python3 tools/compare_modes.py --display "$view" --scenarios 0:0,0:512 --rounds 3 --iterations 8 --interval 1 --top-pair-only --reference-seconds 8 --output "benchmarks/process-thread-scaling/top-default-$view.json"
+  sudo python3 tools/compare_modes.py --display "$view" --scenarios 0:0,0:512 --rounds 3 --iterations 8 --interval 1 --htop-pair-only --reference-seconds 8 --output "benchmarks/process-thread-scaling/htop-default-$view.json"
+done
 ```
 
-The benchmark accepts `--scenarios` as comma-separated `extra_sleep_processes:extra_worker_threads` pairs. Use `--interval 1 --reference-seconds 8` for the longer TUI check. Run the terminal benchmarks separately, since concurrent monitors would interfere with the CPU measurements.
+Run the commands sequentially so monitors do not perturb one another. The earlier unmatched comparison and syscall traces are retained in [`legacy`](../benchmarks/process-thread-scaling/legacy/) for historical inspection and are not used in the tables above.

@@ -1,5 +1,7 @@
 # Performance measurements
 
+For current comparisons with standard top and htop under matched process/thread visibility, see the [mode/backend benchmark](mode-benchmark.md). The measurements below are earlier profiling runs and should not be combined with its CPU percentages.
+
 Environment: x86-64, Linux `7.0.0-taskstats+`, approximately 425–453 tasks, procps `4.0.4-4ubuntu3.2`. These are observations from one host, not a claim about other kernels or task counts.
 
 Reproduce the collection comparison:

@@ -35,11 +35,22 @@ p.add_argument('--reference-apps', nargs='+', choices=['top', 'htop', 'htop-hidd
                default=['top', 'htop'], help='reference programs; htop-hidden hides user threads')
 p.add_argument('--tui-matrix-only', action='store_true',
                help='measure four btitop mode/backend combinations on a 110x30 pseudo-terminal')
+p.add_argument('--htop-pair-only', action='store_true',
+               help='measure btitop htop/BPF, htop/procfs and standard htop in one workload')
+p.add_argument('--top-pair-only', action='store_true',
+               help='measure btitop top/BPF, top/procfs and standard top in one workload')
+p.add_argument('--matched-tui-all', action='store_true',
+               help='measure all four btitop combinations plus standard top and htop')
+p.add_argument('--display', choices=['native', 'process', 'threads'], default='native',
+               help='align process/thread and kernel-thread visibility in terminal comparisons')
 p.add_argument('--reference-seconds', type=float, default=2)
 args = p.parse_args()
-if args.rounds < 1 or args.iterations < 3 or not 0.1 <= args.interval <= 3600:
-    p.error('rounds >= 1, iterations >= 3 and interval >= 0.1 are required')
-if args.references_only and args.tui_matrix_only:
+if (args.rounds < 1 or args.iterations < 3 or
+        not 0.1 <= args.interval <= 3600 or args.reference_seconds <= 0):
+    p.error('rounds >= 1, iterations >= 3, interval >= 0.1 and reference-seconds > 0 are required')
+if sum((args.references_only, args.tui_matrix_only, args.htop_pair_only,
+        args.top_pair_only,
+        args.matched_tui_all)) > 1:
     p.error('choose one terminal benchmark type')
 try:
     scenarios = [tuple(map(int, item.split(':'))) for item in args.scenarios.split(',')]
@@ -54,6 +65,8 @@ if not binary.is_file():
 def run(mode, backend):
     cmd = [str(binary), '--mode', mode, '--backend', backend, '--json',
            '--iterations', str(args.iterations), '--interval', str(args.interval)]
+    if args.display == 'threads':
+        cmd.append('--threads')
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
     start = time.monotonic()
     result = subprocess.run(cmd, text=True, capture_output=True,
@@ -67,7 +80,8 @@ def run(mode, backend):
         raise RuntimeError(f'{mode}/{backend}: unexpected frames or backend fallback')
     latencies = sorted((f['end_monotonic_ns'] - f['begin_monotonic_ns']) / 1e6 for f in frames)
     cpu = after.ru_utime + after.ru_stime - before.ru_utime - before.ru_stime
-    return {'mode': mode, 'backend': backend, 'cpu_seconds': cpu,
+    return {'mode': mode, 'backend': backend, 'display': args.display,
+            'cpu_seconds': cpu,
             'cpu_percent_one_core': 100 * cpu / wall, 'wall_seconds': wall,
             'sample_ms_p50': statistics.median(latencies),
             'sample_ms_p95': latencies[min(len(latencies) - 1, int(len(latencies) * .95))],
@@ -81,16 +95,25 @@ def run_terminal(config):
         mode, backend = config
         cmd = [str(binary), '--mode', mode, '--backend', backend,
                '--interval', str(args.interval)]
+        if args.display == 'threads':
+            cmd.append('--threads')
         label = f'{mode}/{backend}'
     else:
         cmd = (['top', '-d', str(args.interval)] if config == 'top' else
                ['htop', '-d', str(max(1, round(args.interval * 10)))])
+        if config == 'top' and args.display == 'threads':
+            cmd.append('-H')
         label = config
     with tempfile.TemporaryDirectory() as config_dir:
         env = dict(os.environ, TERM='xterm-256color', LC_ALL='C', XDG_CONFIG_HOME=config_dir)
-        if config == 'htop-hidden':
+        if config == 'htop-hidden' or (config == 'htop' and args.display != 'native'):
             htoprc = Path(config_dir) / 'htoprc'
-            htoprc.write_text('htop_version=3.3.0\nhide_userland_threads=1\n')
+            hide_threads = config == 'htop-hidden' or args.display == 'process'
+            # btitop includes kernel tasks in both views; align htop explicitly.
+            settings = f'htop_version=3.3.0\nhide_userland_threads={int(hide_threads)}\n'
+            if args.display != 'native':
+                settings += 'hide_kernel_threads=0\n'
+            htoprc.write_text(settings)
             env['HTOPRC'] = str(htoprc)
         before = resource.getrusage(resource.RUSAGE_CHILDREN)
         start = time.monotonic()
@@ -122,7 +145,8 @@ def run_terminal(config):
             raise RuntimeError(f'{label} exited with {child.returncode}')
         cpu = after.ru_utime + after.ru_stime - before.ru_utime - before.ru_stime
         result = {'cpu_seconds': cpu, 'cpu_percent_one_core': 100 * cpu / wall,
-                  'wall_seconds': wall, 'terminal_bytes': terminal_bytes}
+                  'wall_seconds': wall, 'terminal_bytes': terminal_bytes,
+                  'display': args.display}
         if isinstance(config, tuple):
             result.update(mode=mode, backend=backend)
         else:
@@ -161,20 +185,30 @@ def stop_workload(children):
 
 results = []
 configs = [('top', 'bpf'), ('top', 'procfs'), ('htop', 'bpf'), ('htop', 'procfs')]
+matched_configs = configs + ['top', 'htop']
 for processes, threads in scenarios:
     children = start_workload(processes, threads)
     try:
         for round_number in range(args.rounds):
             if args.references_only:
                 ordered = args.reference_apps if round_number % 2 == 0 else list(reversed(args.reference_apps))
+            elif args.htop_pair_only:
+                pair = [('htop', 'bpf'), ('htop', 'procfs'), 'htop']
+                ordered = pair[round_number % 3:] + pair[:round_number % 3]
+            elif args.top_pair_only:
+                pair = [('top', 'bpf'), ('top', 'procfs'), 'top']
+                ordered = pair[round_number % 3:] + pair[:round_number % 3]
             elif args.tui_matrix_only:
                 ordered = configs[round_number % 4:] + configs[:round_number % 4]
+            elif args.matched_tui_all:
+                ordered = matched_configs[round_number % 6:] + matched_configs[:round_number % 6]
             else:
                 # Rotate order so a consistently warmer or busier host does not
                 # always favor the same backend.
                 ordered = configs[round_number % 4:] + configs[:round_number % 4]
             for config in ordered:
-                if args.references_only or args.tui_matrix_only:
+                if (args.references_only or args.tui_matrix_only or
+                        args.htop_pair_only or args.top_pair_only or args.matched_tui_all):
                     value = run_terminal(config)
                 else:
                     mode, backend = config
@@ -190,7 +224,10 @@ for processes, threads in scenarios:
 
 document = {'kernel': os.uname().release, 'interval_seconds': args.interval,
             'iterations': args.iterations, 'rounds': args.rounds,
-            'terminal_seconds': args.reference_seconds if args.references_only or args.tui_matrix_only else None,
+            'display': args.display,
+            'terminal_seconds': args.reference_seconds if (
+                args.references_only or args.tui_matrix_only or args.htop_pair_only or
+                args.top_pair_only or args.matched_tui_all) else None,
             'results': results}
 if args.output:
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -1,5 +1,7 @@
 # btitop, top, and htop: scenario comparison
 
+This is a historical exploratory run. Its htop and btitop task visibility was not aligned; use the [matched process/thread benchmark](mode-benchmark.md) for current CPU comparisons.
+
 Measured on 2026-09-28, Linux `7.0.0-taskstats+`, 16 logical CPUs, procps top `4.0.4-4ubuntu3.2`, htop `3.3.0`. All monitors ran as root so btitop could load BPF. Extra workloads were stopped after each case. CPU seconds are process user+system time; `% of one CPU` is CPU seconds divided by wall seconds. A few tenths of a second can vary with system activity, so treat small differences as inconclusive.
 
 ## What each tool enumerates
