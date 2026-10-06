@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 p = argparse.ArgumentParser()
 p.add_argument('--binary', type=Path, default=ROOT / 'build/btitop')
 p.add_argument('--scenarios', default='0:0,100:0,300:0,0:128,0:512,100:128',
-               help='comma-separated extra-processes:extra-threads pairs')
+               help='comma-separated extra-sleep-processes:threads-in-one-extra-worker-process pairs')
 p.add_argument('--rounds', type=int, default=3)
 p.add_argument('--iterations', type=int, default=6)
 p.add_argument('--interval', type=float, default=0.2)
@@ -46,7 +46,7 @@ try:
     if not scenarios or any(len(x) != 2 or min(x) < 0 for x in scenarios):
         raise ValueError()
 except ValueError:
-    p.error('scenarios must be nonnegative process:thread pairs')
+    p.error('scenarios must be nonnegative extra-sleep-process:worker-thread pairs')
 binary = args.binary.resolve()
 if not binary.is_file():
     p.error(f'binary not found: {binary}')
