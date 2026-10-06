@@ -180,6 +180,8 @@ for processes, threads in scenarios:
                     mode, backend = config
                     value = run(mode, backend)
                 value.update(extra_processes=processes, extra_threads=threads,
+                             added_processes_total=processes + (threads > 0),
+                             added_tasks_total=processes + (threads + 1 if threads else 0),
                              round=round_number + 1)
                 results.append(value)
                 print(json.dumps(value), flush=True)
