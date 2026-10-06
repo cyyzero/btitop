@@ -1,0 +1,189 @@
+{
+  "kernel": "7.0.0-taskstats+",
+  "interval_seconds": 0.2,
+  "iterations": 6,
+  "rounds": 3,
+  "terminal_seconds": 2.0,
+  "results": [
+    {
+      "cpu_seconds": 0.5318649999999999,
+      "cpu_percent_one_core": 26.43812847163323,
+      "wall_seconds": 2.0117346830002134,
+      "terminal_bytes": 14556,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 0,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.49874,
+      "cpu_percent_one_core": 23.986819013540494,
+      "wall_seconds": 2.07922525999993,
+      "terminal_bytes": 15648,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 0,
+      "round": 2
+    },
+    {
+      "cpu_seconds": 0.490688,
+      "cpu_percent_one_core": 23.697227979320324,
+      "wall_seconds": 2.0706556919999457,
+      "terminal_bytes": 13550,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 0,
+      "round": 3
+    },
+    {
+      "cpu_seconds": 0.5192549999999998,
+      "cpu_percent_one_core": 24.735443368426495,
+      "wall_seconds": 2.099234658000114,
+      "terminal_bytes": 16291,
+      "reference_app": "htop-hidden",
+      "extra_processes": 100,
+      "extra_threads": 0,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.5160560000000003,
+      "cpu_percent_one_core": 24.617601162654957,
+      "wall_seconds": 2.096288735000144,
+      "terminal_bytes": 15328,
+      "reference_app": "htop-hidden",
+      "extra_processes": 100,
+      "extra_threads": 0,
+      "round": 2
+    },
+    {
+      "cpu_seconds": 0.5443709999999999,
+      "cpu_percent_one_core": 26.890926560959798,
+      "wall_seconds": 2.024366839000322,
+      "terminal_bytes": 14763,
+      "reference_app": "htop-hidden",
+      "extra_processes": 100,
+      "extra_threads": 0,
+      "round": 3
+    },
+    {
+      "cpu_seconds": 0.5709539999999995,
+      "cpu_percent_one_core": 27.621014079935502,
+      "wall_seconds": 2.067100064999977,
+      "terminal_bytes": 13829,
+      "reference_app": "htop-hidden",
+      "extra_processes": 300,
+      "extra_threads": 0,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.5810139999999997,
+      "cpu_percent_one_core": 28.005572002804136,
+      "wall_seconds": 2.074637146999976,
+      "terminal_bytes": 14049,
+      "reference_app": "htop-hidden",
+      "extra_processes": 300,
+      "extra_threads": 0,
+      "round": 2
+    },
+    {
+      "cpu_seconds": 0.57613,
+      "cpu_percent_one_core": 27.835061408893807,
+      "wall_seconds": 2.06979963699996,
+      "terminal_bytes": 12378,
+      "reference_app": "htop-hidden",
+      "extra_processes": 300,
+      "extra_threads": 0,
+      "round": 3
+    },
+    {
+      "cpu_seconds": 0.5095159999999996,
+      "cpu_percent_one_core": 24.39481918726348,
+      "wall_seconds": 2.088623801999802,
+      "terminal_bytes": 15025,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 128,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.46860199999999974,
+      "cpu_percent_one_core": 22.877480994616544,
+      "wall_seconds": 2.04831117599997,
+      "terminal_bytes": 16925,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 128,
+      "round": 2
+    },
+    {
+      "cpu_seconds": 0.5140930000000008,
+      "cpu_percent_one_core": 24.555020373485558,
+      "wall_seconds": 2.09363703300005,
+      "terminal_bytes": 15830,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 128,
+      "round": 3
+    },
+    {
+      "cpu_seconds": 0.5171180000000009,
+      "cpu_percent_one_core": 24.66003107706016,
+      "wall_seconds": 2.0969884360001743,
+      "terminal_bytes": 15737,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 512,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.514856,
+      "cpu_percent_one_core": 24.575222961273393,
+      "wall_seconds": 2.0950206669999716,
+      "terminal_bytes": 14968,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 512,
+      "round": 2
+    },
+    {
+      "cpu_seconds": 0.5043449999999989,
+      "cpu_percent_one_core": 24.189512492815236,
+      "wall_seconds": 2.0849738090000756,
+      "terminal_bytes": 15996,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 512,
+      "round": 3
+    },
+    {
+      "cpu_seconds": 0.5047790000000001,
+      "cpu_percent_one_core": 24.217009978415426,
+      "wall_seconds": 2.0843985299998167,
+      "terminal_bytes": 18625,
+      "reference_app": "htop-hidden",
+      "extra_processes": 100,
+      "extra_threads": 128,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.5135860000000001,
+      "cpu_percent_one_core": 24.5413894095213,
+      "wall_seconds": 2.0927339989998472,
+      "terminal_bytes": 18387,
+      "reference_app": "htop-hidden",
+      "extra_processes": 100,
+      "extra_threads": 128,
+      "round": 2
+    },
+    {
+      "cpu_seconds": 0.49702099999999927,
+      "cpu_percent_one_core": 23.930935376644136,
+      "wall_seconds": 2.076897506000023,
+      "terminal_bytes": 18516,
+      "reference_app": "htop-hidden",
+      "extra_processes": 100,
+      "extra_threads": 128,
+      "round": 3
+    }
+  ]
+}

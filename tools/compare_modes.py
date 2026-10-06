@@ -31,6 +31,8 @@ p.add_argument('--interval', type=float, default=0.2)
 p.add_argument('--output', type=Path)
 p.add_argument('--references-only', action='store_true',
                help='measure actual top and htop TUI programs on a 110x30 pseudo-terminal')
+p.add_argument('--reference-apps', nargs='+', choices=['top', 'htop', 'htop-hidden'],
+               default=['top', 'htop'], help='reference programs; htop-hidden hides user threads')
 p.add_argument('--tui-matrix-only', action='store_true',
                help='measure four btitop mode/backend combinations on a 110x30 pseudo-terminal')
 p.add_argument('--reference-seconds', type=float, default=2)
@@ -86,6 +88,10 @@ def run_terminal(config):
         label = config
     with tempfile.TemporaryDirectory() as config_dir:
         env = dict(os.environ, TERM='xterm-256color', LC_ALL='C', XDG_CONFIG_HOME=config_dir)
+        if config == 'htop-hidden':
+            htoprc = Path(config_dir) / 'htoprc'
+            htoprc.write_text('htop_version=3.3.0\nhide_userland_threads=1\n')
+            env['HTOPRC'] = str(htoprc)
         before = resource.getrusage(resource.RUSAGE_CHILDREN)
         start = time.monotonic()
         def tty_setup():
@@ -160,7 +166,7 @@ for processes, threads in scenarios:
     try:
         for round_number in range(args.rounds):
             if args.references_only:
-                ordered = ['top', 'htop'] if round_number % 2 == 0 else ['htop', 'top']
+                ordered = args.reference_apps if round_number % 2 == 0 else list(reversed(args.reference_apps))
             elif args.tui_matrix_only:
                 ordered = configs[round_number % 4:] + configs[:round_number % 4]
             else:

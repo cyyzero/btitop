@@ -30,7 +30,7 @@ The first test used six JSON samples at a 0.2-second interval. Its CPU% includes
 
 ## Actual terminal programs
 
-Each program then ran in a 110×30 pseudo-terminal for two seconds with a 0.2-second refresh. The table compares whole-program CPU%, including startup and rendering. The btitop modes use the same screen layout; standard top and htop have different fields and terminal output, so their figures are reference costs rather than normalized per-field comparisons.
+Each program then ran in a 110×30 pseudo-terminal for two seconds with a 0.2-second refresh. The table compares whole-program CPU%, including startup and rendering. The btitop modes use the same screen layout. **Standard htop 3.3.0 shows userland threads by default**, while all btitop rows below are process view; top is also in process view. Standard top and htop have different fields and terminal output, so their figures are reference costs rather than normalized per-field comparisons.
 
 | Added processes / threads | btitop top/BPF | btitop top/procfs | btitop htop/BPF | btitop htop/procfs | standard top | standard htop |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -41,12 +41,22 @@ Each program then ran in a 110×30 pseudo-terminal for two seconds with a 0.2-se
 | 0 / 512 | 3.89 | 11.58 | 3.93 | 30.08 | 5.13 | 41.34 |
 | 100 / 128 | 3.75 | 12.89 | 3.73 | 29.15 | 6.01 | 37.33 |
 
+To separate thread display from traversal, standard htop 3.3.0 was rerun with `hide_userland_threads=1`, again three rounds at 0.2-second refresh. Its whole-program CPU% medians were **23.99, 24.74, 27.84, 24.39, 24.58, 24.22** in the six scenarios in table order. Hiding threads removes much of the thread-count scaling, but does not eliminate procfs directory traversal or other per-process work. The raw values are in [`htop-hidden-matrix.json`](../benchmarks/2026-10-07/htop-hidden-matrix.json).
+
 The two-second window gives startup work a large share. As a check at the project's default **one-second refresh**, each program ran for eight seconds under baseline and +512 threads. These longer-window results are single runs, not three-round medians:
 
 | Added processes / threads | btitop top/BPF | btitop top/procfs | btitop htop/BPF | btitop htop/procfs | standard top | standard htop |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 0 / 0 | 0.81 | 2.20 | 0.96 | 7.01 | 1.31 | 13.60 |
 | 0 / 512 | 1.07 | 2.49 | 0.99 | 9.05 | 1.26 | 16.79 |
+
+The standard htop column above again uses its default visible-thread setting. With userland threads hidden, a separate two-round, eight-second run measured **11.02%** at baseline and **11.36%** with 512 added threads (medians). The raw runs are in [`htop-hidden-default.json`](../benchmarks/2026-10-07/htop-hidden-default.json).
+
+### Why installed htop 3.3.0 does more work
+
+The [3.3.0 process-table source](https://github.com/htop-dev/htop/blob/3.3.0/linux/LinuxProcessTable.c) opens `/proc/PID/task`, opens each TID directory, and may read `stat`, `statm`, `status`, and command-line data. Its default settings [leave userland threads visible](https://github.com/htop-dev/htop/blob/3.3.0/Settings.c). Even when threads are hidden, it still enumerates them and skips most per-thread field reads only after identifying an existing thread. Version 3.3.0 also attempts to open `task` beneath each thread directory; a [later source revision](https://github.com/htop-dev/htop/blob/bb3ee0a/linux/LinuxProcessTable.c) avoids that redundant recursion.
+
+In one separate five-second `strace -c` run at a one-second refresh, standard top made about **5,406 `openat` and 5,397 `read` calls**, while default htop made about **39,919 `openat` and 66,504 `read` calls**. With userland threads hidden, htop made about **30,443 `openat` and 43,476 `read` calls**; the [syscall summaries](../benchmarks/2026-10-07/strace-htop-default.txt) are preserved alongside the [top](../benchmarks/2026-10-07/strace-top.txt) and [hidden-thread htop](../benchmarks/2026-10-07/strace-htop-hidden.txt) summaries. A separate four-frame detailed trace showed **8,745 failed attempts** to open a nested `task` directory under a TID. `strace` changes timing, so these counts identify work rather than directly partitioning the uninstrumented CPU percentages. They also show that btitop's `htop` procfs mode is a controlled all-thread scan workload, not an exact clone of htop 3.3.0's field or UI behavior.
 
 The observed pattern is consistent: the process-only procfs path scales with process count, the htop-style procfs path also scales with thread count, and BPF remains low in these cases despite scanning all tasks. This does not prove a fixed speedup on other machines. Background tasks changed slightly between runs, the sample is small, the TUI programs render different amounts of data, and the 10,000-task and other-kernel cases remain untested.
 
@@ -58,6 +68,7 @@ cmake --build build
 sudo python3 tools/compare_modes.py --rounds 3 --iterations 6 --interval 0.2 --output scan-matrix.json
 sudo python3 tools/compare_modes.py --rounds 3 --iterations 6 --interval 0.2 --tui-matrix-only --reference-seconds 2 --output btitop-tui-matrix.json
 sudo python3 tools/compare_modes.py --rounds 3 --iterations 6 --interval 0.2 --references-only --reference-seconds 2 --output reference-tui-matrix.json
+sudo python3 tools/compare_modes.py --rounds 3 --iterations 6 --interval 0.2 --references-only --reference-apps htop-hidden --reference-seconds 2 --output htop-hidden-matrix.json
 ```
 
 The benchmark accepts `--scenarios` as comma-separated `processes:threads` pairs. Use `--interval 1 --reference-seconds 8` for the longer TUI check. Run the terminal benchmarks separately, since concurrent monitors would interfere with the CPU measurements.

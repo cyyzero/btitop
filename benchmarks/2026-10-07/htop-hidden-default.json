@@ -1,0 +1,49 @@
+{
+  "kernel": "7.0.0-taskstats+",
+  "interval_seconds": 1.0,
+  "iterations": 8,
+  "rounds": 2,
+  "terminal_seconds": 8.0,
+  "results": [
+    {
+      "cpu_seconds": 0.8649579999999999,
+      "cpu_percent_one_core": 10.749539730267662,
+      "wall_seconds": 8.04646544599973,
+      "terminal_bytes": 21481,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 0,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.914138,
+      "cpu_percent_one_core": 11.286322964561565,
+      "wall_seconds": 8.099520125999788,
+      "terminal_bytes": 19882,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 0,
+      "round": 2
+    },
+    {
+      "cpu_seconds": 0.8961859999999997,
+      "cpu_percent_one_core": 11.09230403434954,
+      "wall_seconds": 8.079349404999903,
+      "terminal_bytes": 23279,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 512,
+      "round": 1
+    },
+    {
+      "cpu_seconds": 0.9311470000000006,
+      "cpu_percent_one_core": 11.617974215075128,
+      "wall_seconds": 8.014710506000029,
+      "terminal_bytes": 21884,
+      "reference_app": "htop-hidden",
+      "extra_processes": 0,
+      "extra_threads": 512,
+      "round": 2
+    }
+  ]
+}

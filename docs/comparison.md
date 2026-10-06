@@ -5,7 +5,7 @@ Measured on 2026-09-28, Linux `7.0.0-taskstats+`, 16 logical CPUs, procps top `4
 ## What each tool enumerates
 
 - Default top calls `procps_pids_reap(..., PIDS_FETCH_TASKS_ONLY)` and reads all visible process leaders; `top -H` uses `PIDS_FETCH_THREADS_TOO`. It sorts the collected tasks and displays only rows that fit the terminal. Batch output confirmed similar row counts to btitop (441 vs 446 process lines, 1944 vs 1947 thread lines including headers and task churn).
-- htop's Linux process-table scan enumerates `/proc`, then recurses into each process's `task` directory. Hiding threads affects display, not this scan. Source checked at htop commit `bb3ee0a`, `linux/LinuxProcessTable.c`.
+- htop 3.3.0 enumerates `/proc` and each process's `task` directory. Its default configuration shows userland threads; hiding them skips most field reads for existing hidden threads, but still traverses and opens their directories. The [3.3.0 source](https://github.com/htop-dev/htop/blob/3.3.0/linux/LinuxProcessTable.c) also attempts to recurse into each thread's nonexistent `task` directory. A [later source revision](https://github.com/htop-dev/htop/blob/bb3ee0a/linux/LinuxProcessTable.c) guards that recursion. Thus the installed 3.3.0 binary has extra work that the newer source alone would not reveal.
 - btitop's `iter/task` BPF program visits kernel tasks, including threads. Process view groups them before display; `--threads` displays separate tasks.
 - `btitop --mode=htop --backend=procfs` follows htop's traversal pattern: it reads every thread's procfs stat even when displaying process rows. BPF is selectable with either mode, but both mode selections use the same all-task iterator to preserve process CPU accounting. The mode does not claim full top/htop field or UI equivalence.
 
@@ -36,7 +36,7 @@ A 110×30 pseudo-terminal was used for each real TUI session. Before the UI fix,
 | Baseline, about 440 processes | 0.06 | 0.10 | 1.36 | 19,108 | 5,464 | 6,888 |
 | +500 sleeping processes | 0.08 | 0.21 | 1.64 | 18,904 | 5,280 | 7,772 |
 
-The interactive programs use different layouts and emit different numbers of terminal bytes. These measurements establish observed whole-program cost, not a normalized per-field comparison. btitop has lower CPU cost here but uses roughly 19 MiB peak RSS, versus roughly 5–8 MiB for top and htop. htop's larger cost is consistent with its per-thread procfs scan, though this experiment does not isolate that as the only cause.
+The interactive programs use different layouts and emit different numbers of terminal bytes. htop's default configuration shows userland threads, whereas the btitop and top process views do not, so these measurements are not a normalized per-field comparison. btitop has lower CPU cost here but uses roughly 19 MiB peak RSS, versus roughly 5–8 MiB for top and htop. The later [mode/backend benchmark](mode-benchmark.md) includes a separate htop run with threads hidden.
 
 ## Reproduce
 
